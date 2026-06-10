@@ -53,7 +53,21 @@ def get_sessions(
 
 def enrich_session_response(db: Session, session_obj: GameSession) -> dict:
     result = {
-        **session_obj.__dict__,
+        "id": session_obj.id,
+        "script_id": session_obj.script_id,
+        "room_id": session_obj.room_id,
+        "host_id": session_obj.host_id,
+        "date": session_obj.date,
+        "start_time": session_obj.start_time,
+        "end_time": session_obj.end_time,
+        "price": session_obj.price,
+        "current_players": session_obj.current_players,
+        "min_players": session_obj.min_players,
+        "max_players": session_obj.max_players,
+        "status": session_obj.status,
+        "notes": session_obj.notes,
+        "created_at": session_obj.created_at,
+        "updated_at": session_obj.updated_at,
         "script_name": session_obj.script.name if session_obj.script else None,
         "room_name": session_obj.room.name if session_obj.room else None,
         "host_name": session_obj.host.nickname if session_obj.host else None,
@@ -97,6 +111,11 @@ def create_session(db: Session, session_in: SessionCreate) -> GameSession:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="主持人不存在"
             )
+        if host.accept_type == "none":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该主持人暂不接受接单"
+            )
         from ..models.host_schedule import HostSchedule
         schedule = db.query(HostSchedule).filter(
             HostSchedule.host_id == session_in.host_id,
@@ -109,7 +128,7 @@ def create_session(db: Session, session_in: SessionCreate) -> GameSession:
         if not schedule:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="主持人在该时间段不可用"
+                detail="主持人在该时间段没有排班或已被占用"
             )
 
     db_session = GameSession(**session_in.model_dump())
@@ -161,6 +180,11 @@ def update_session(db: Session, session_id: int, session_in: SessionUpdate) -> G
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="主持人不存在"
             )
+        if host.accept_type == "none":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该主持人暂不接受接单"
+            )
         schedule = db.query(HostSchedule).filter(
             HostSchedule.host_id == session_in.host_id,
             HostSchedule.date == date_val,
@@ -172,7 +196,7 @@ def update_session(db: Session, session_id: int, session_in: SessionUpdate) -> G
         if not schedule:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="主持人在该时间段不可用"
+                detail="主持人在该时间段没有排班或已被占用"
             )
         if db_session.host_id:
             old_schedule = db.query(HostSchedule).filter(

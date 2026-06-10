@@ -11,6 +11,7 @@ class HostBase(BaseModel):
     experience_years: int = 0
     specialties: Optional[str] = None
     hourly_rate: Decimal = Decimal("0")
+    accept_type: Optional[str] = "all"
 
 
 class HostCreate(HostBase):
@@ -24,6 +25,7 @@ class HostUpdate(BaseModel):
     experience_years: Optional[int] = None
     specialties: Optional[str] = None
     hourly_rate: Optional[Decimal] = None
+    accept_type: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -35,6 +37,7 @@ class HostResponse(HostBase):
     rating: Decimal
     session_count: int
     is_active: bool
+    accept_type: str
     created_at: datetime
     updated_at: datetime
 

@@ -203,4 +203,8 @@ def get_available_hosts(
     host_ids = [s.host_id for s in available_schedules]
     if not host_ids:
         return []
-    return db.query(Host).filter(Host.id.in_(host_ids), Host.is_active == True).all()
+    return db.query(Host).filter(
+        Host.id.in_(host_ids),
+        Host.is_active == True,
+        Host.accept_type != "none"
+    ).all()

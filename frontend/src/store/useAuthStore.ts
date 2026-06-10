@@ -11,6 +11,7 @@ interface AuthState {
   register: (data: any) => Promise<void>;
   logout: () => void;
   fetchCurrentUser: () => Promise<void>;
+  setUser: (user: User) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -60,5 +61,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (savedUser) {
       set({ user: JSON.parse(savedUser) });
     }
+  },
+
+  setUser: (user: User) => {
+    localStorage.setItem('user', JSON.stringify(user));
+    set({ user });
   },
 }));

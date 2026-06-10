@@ -67,12 +67,43 @@ const SessionList: React.FC = () => {
     status: undefined as string | undefined,
     dateRange: [] as dayjs.Dayjs[],
   });
+  const [formDate, setFormDate] = useState<dayjs.Dayjs | null>(null);
+  const [formStartTime, setFormStartTime] = useState<dayjs.Dayjs | null>(null);
+  const [formEndTime, setFormEndTime] = useState<dayjs.Dayjs | null>(null);
+  const [availableHosts, setAvailableHosts] = useState<Host[]>([]);
+  const [loadingHosts, setLoadingHosts] = useState(false);
 
   useEffect(() => {
     fetchScripts();
     fetchRooms();
     fetchHosts();
   }, []);
+
+  useEffect(() => {
+    if (formDate && formStartTime && formEndTime) {
+      fetchAvailableHosts();
+    } else {
+      setAvailableHosts([]);
+    }
+  }, [formDate, formStartTime, formEndTime]);
+
+  const fetchAvailableHosts = async () => {
+    if (!formDate || !formStartTime || !formEndTime) return;
+    setLoadingHosts(true);
+    try {
+      const res = await api.getAvailableHosts(
+        formDate.format('YYYY-MM-DD'),
+        formStartTime.format('HH:mm:ss'),
+        formEndTime.format('HH:mm:ss')
+      );
+      setAvailableHosts(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch available hosts:', error);
+      setAvailableHosts([]);
+    } finally {
+      setLoadingHosts(false);
+    }
+  };
 
   useEffect(() => {
     fetchSessions();
@@ -131,11 +162,17 @@ const SessionList: React.FC = () => {
 
   const handleEdit = (session: Session) => {
     setEditingSession(session);
+    const date = dayjs(session.date);
+    const startTime = dayjs(session.start_time, 'HH:mm:ss');
+    const endTime = dayjs(session.end_time, 'HH:mm:ss');
+    setFormDate(date);
+    setFormStartTime(startTime);
+    setFormEndTime(endTime);
     form.setFieldsValue({
       ...session,
-      date: dayjs(session.date),
-      start_time: dayjs(session.start_time, 'HH:mm:ss'),
-      end_time: dayjs(session.end_time, 'HH:mm:ss'),
+      date,
+      start_time: startTime,
+      end_time: endTime,
     });
     setIsModalOpen(true);
   };
@@ -293,6 +330,10 @@ const SessionList: React.FC = () => {
             icon={<PlusOutlined />}
             onClick={() => {
               setEditingSession(null);
+              setFormDate(null);
+              setFormStartTime(null);
+              setFormEndTime(null);
+              setAvailableHosts([]);
               form.resetFields();
               setIsModalOpen(true);
             }}
@@ -431,8 +472,21 @@ const SessionList: React.FC = () => {
                 name="host_id"
                 label="主持人（可选）"
               >
-                <Select placeholder="请选择主持人" allowClear>
-                  {hosts.map(h => (
+                <Select
+                  placeholder={
+                    formDate && formStartTime && formEndTime
+                      ? loadingHosts
+                        ? '加载中...'
+                        : availableHosts.length === 0
+                          ? '该时间段暂无可用主持人'
+                          : '请选择主持人'
+                      : '请先选择日期和时间'
+                  }
+                  allowClear
+                  loading={loadingHosts}
+                  disabled={!formDate || !formStartTime || !formEndTime}
+                >
+                  {availableHosts.map(h => (
                     <Option key={h.id} value={h.id}>{h.nickname} (评分{h.rating})</Option>
                   ))}
                 </Select>
@@ -446,7 +500,11 @@ const SessionList: React.FC = () => {
                 label="日期"
                 rules={[{ required: true, message: '请选择日期' }]}
               >
-                <DatePicker style={{ width: '100%' }} placeholder="选择日期" />
+                <DatePicker
+                  style={{ width: '100%' }}
+                  placeholder="选择日期"
+                  onChange={(value) => setFormDate(value)}
+                />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -455,7 +513,12 @@ const SessionList: React.FC = () => {
                 label="开始时间"
                 rules={[{ required: true, message: '请选择开始时间' }]}
               >
-                <TimePicker style={{ width: '100%' }} format="HH:mm" placeholder="开始时间" />
+                <TimePicker
+                  style={{ width: '100%' }}
+                  format="HH:mm"
+                  placeholder="开始时间"
+                  onChange={(value) => setFormStartTime(value)}
+                />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -464,7 +527,12 @@ const SessionList: React.FC = () => {
                 label="结束时间"
                 rules={[{ required: true, message: '请选择结束时间' }]}
               >
-                <TimePicker style={{ width: '100%' }} format="HH:mm" placeholder="结束时间" />
+                <TimePicker
+                  style={{ width: '100%' }}
+                  format="HH:mm"
+                  placeholder="结束时间"
+                  onChange={(value) => setFormEndTime(value)}
+                />
               </Form.Item>
             </Col>
           </Row>

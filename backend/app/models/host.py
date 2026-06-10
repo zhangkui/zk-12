@@ -17,6 +17,7 @@ class Host(Base):
     rating = Column(Numeric(3, 2), default=5.0)
     session_count = Column(Integer, default=0)
     hourly_rate = Column(Numeric(10, 2), default=0)
+    accept_type = Column(String(50), default="all")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -60,6 +60,7 @@ export interface Host {
   rating: number;
   session_count: number;
   hourly_rate: number;
+  accept_type: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

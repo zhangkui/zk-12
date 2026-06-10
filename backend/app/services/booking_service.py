@@ -34,7 +34,15 @@ def get_bookings(
 
 def enrich_booking_response(db: Session, booking: Booking) -> dict:
     result = {
-        **booking.__dict__,
+        "id": booking.id,
+        "session_id": booking.session_id,
+        "player_id": booking.player_id,
+        "player_count": booking.player_count,
+        "character_name": booking.character_name,
+        "status": booking.status,
+        "notes": booking.notes,
+        "created_at": booking.created_at,
+        "updated_at": booking.updated_at,
         "session_info": {
             "id": booking.session.id,
             "script_name": booking.session.script.name if booking.session.script else None,

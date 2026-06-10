@@ -37,6 +37,30 @@ def init_database():
     Base.metadata.create_all(bind=engine)
     print("Tables created successfully!")
 
+    print("Running database migrations...")
+    with engine.connect() as conn:
+        trans = conn.begin()
+        try:
+            result = conn.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'hosts' AND column_name = 'accept_type'
+            """))
+            if result.fetchone() is None:
+                print("Adding accept_type column to hosts table...")
+                conn.execute(text("""
+                    ALTER TABLE hosts 
+                    ADD COLUMN accept_type VARCHAR(50) DEFAULT 'all' NOT NULL
+                """))
+                print("accept_type column added successfully!")
+            else:
+                print("accept_type column already exists, skipping...")
+            trans.commit()
+        except Exception as e:
+            trans.rollback()
+            print(f"Migration error: {e}")
+            raise
+
     db = SessionLocal()
     try:
         if not db.query(User).filter(User.username == "admin").first():

@@ -23,10 +23,10 @@ export const updateUser = (id: number, data: Partial<User>): Promise<APIResponse
 };
 
 export const updateUserPassword = (id: number, data: {
-  old_password?: string;
+  old_password: string;
   new_password: string;
 }): Promise<APIResponse<User>> => {
-  return api.patch(`/users/${id}/password`, data);
+  return api.put(`/users/${id}/password`, data);
 };
 
 export const deleteUser = (id: number): Promise<APIResponse<void>> => {

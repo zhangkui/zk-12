@@ -47,7 +47,21 @@ def get_orders(
 
 def enrich_order_response(db: Session, order: Order) -> dict:
     result = {
-        **order.__dict__,
+        "id": order.id,
+        "order_no": order.order_no,
+        "user_id": order.user_id,
+        "session_id": order.session_id,
+        "booking_id": order.booking_id,
+        "total_amount": order.total_amount,
+        "discount_amount": order.discount_amount,
+        "actual_amount": order.actual_amount,
+        "status": order.status,
+        "payment_method": order.payment_method,
+        "paid_at": order.paid_at,
+        "player_count": order.player_count,
+        "notes": order.notes,
+        "created_at": order.created_at,
+        "updated_at": order.updated_at,
         "user_info": {
             "id": order.user.id,
             "username": order.user.username,

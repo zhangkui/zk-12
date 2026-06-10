@@ -15,6 +15,7 @@ import HostSchedulePage from '../pages/HostSchedulePage';
 import RoomList from '../pages/RoomList';
 import UserList from '../pages/UserList';
 import Register from '../pages/Register';
+import Profile from '../pages/Profile';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -95,6 +96,7 @@ const AppRouter: React.FC = () => {
             </PrivateRoute>
           }
         />
+        <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

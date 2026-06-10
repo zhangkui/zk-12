@@ -182,6 +182,22 @@ const HostList: React.FC = () => {
       render: (rate) => <span style={{ color: '#f5222d' }}>¥{rate}/小时</span>,
     },
     {
+      title: '接单状态',
+      dataIndex: 'accept_type',
+      key: 'accept_type',
+      width: 100,
+      render: (type) => {
+        const typeMap: Record<string, { label: string; color: string }> = {
+          all: { label: '接受所有', color: 'green' },
+          weekday: { label: '仅工作日', color: 'blue' },
+          weekend: { label: '仅周末', color: 'orange' },
+          none: { label: '暂停接单', color: 'red' },
+        };
+        const info = typeMap[type] || { label: type, color: 'default' };
+        return <Tag color={info.color}>{info.label}</Tag>;
+      },
+    },
+    {
       title: '状态',
       dataIndex: 'is_active',
       key: 'is_active',
@@ -371,6 +387,18 @@ const HostList: React.FC = () => {
             label="头像URL"
           >
             <Input placeholder="头像链接" />
+          </Form.Item>
+          <Form.Item
+            name="accept_type"
+            label="接单设置"
+            rules={[{ required: true, message: '请选择接单设置' }]}
+          >
+            <Select placeholder="请选择接单设置">
+              <Option value="all">接受所有时间</Option>
+              <Option value="weekday">仅工作日接单</Option>
+              <Option value="weekend">仅周末接单</Option>
+              <Option value="none">暂停接单</Option>
+            </Select>
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
