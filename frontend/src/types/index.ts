@@ -129,12 +129,64 @@ export interface Order {
   discount_amount: number;
   actual_amount: number;
   status: 'pending' | 'paid' | 'cancelled' | 'refunded';
-  payment_method?: 'wechat' | 'alipay' | 'cash' | 'card' | 'other';
+  payment_method?: 'wechat' | 'alipay' | 'cash' | 'card' | 'balance' | 'other';
   paid_at?: string;
   player_count: number;
   notes?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserBalance {
+  id: number;
+  user_id: number;
+  balance: number;
+  frozen_balance: number;
+  total_recharge: number;
+  total_consumption: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RechargeOrder {
+  id: number;
+  order_no: string;
+  user_id: number;
+  operator_id: number;
+  amount: number;
+  remark?: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  user_info?: {
+    id: number;
+    username: string;
+    full_name?: string;
+    phone?: string;
+  };
+  operator_info?: {
+    id: number;
+    username: string;
+    full_name?: string;
+  };
+}
+
+export interface TransactionRecord {
+  id: number;
+  transaction_no: string;
+  user_id: number;
+  type: 'recharge' | 'payment' | 'refund';
+  amount: number;
+  balance_after: number;
+  order_id?: number;
+  recharge_order_id?: number;
+  remark?: string;
+  created_at: string;
+  order_info?: {
+    id: number;
+    order_no: string;
+    status: string;
+  };
 }
 
 export interface APIResponse<T> {

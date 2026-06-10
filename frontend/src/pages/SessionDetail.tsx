@@ -11,12 +11,14 @@ import {
   Form,
   Input,
   InputNumber,
+  Select,
   message,
   Typography,
   Divider,
   Row,
   Col,
   Statistic,
+  Popconfirm,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -28,13 +30,16 @@ import {
   CheckOutlined,
   CloseOutlined,
   PlusOutlined,
+  PayCircleOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../services';
-import { SessionDetail, Booking } from '../types';
+import { SessionDetail, Booking, Order } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const statusMap: Record<string, { label: string; color: string }> = {
   pending: { label: '待拼团', color: 'orange' },
@@ -60,7 +65,13 @@ const SessionDetailPage: React.FC = () => {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payingBooking, setPayingBooking] = useState<Booking | null>(null);
+  const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
+  const [balance, setBalance] = useState<number>(0);
+  const [hasPaymentPassword, setHasPaymentPassword] = useState(false);
   const [form] = Form.useForm();
+  const [payForm] = Form.useForm();
 
   useEffect(() => {
     if (id) {
@@ -118,8 +129,96 @@ const SessionDetailPage: React.FC = () => {
     }
   };
 
+  const fetchBalance = async () => {
+    try {
+      const res = await api.getBalance();
+      setBalance(res.data.balance);
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+    }
+  };
+
+  const checkPaymentPassword = async () => {
+    try {
+      const res = await api.hasPaymentPassword();
+      setHasPaymentPassword(res.data);
+    } catch (error) {
+      console.error('Failed to check payment password:', error);
+    }
+  };
+
+  const fetchPendingOrder = async (bookingId: number) => {
+    try {
+      const res = await api.getOrders({ page_size: 100 });
+      const order = res.data.find(
+        (o: any) => o.booking_id === bookingId && o.status === 'pending'
+      );
+      setPendingOrder(order || null);
+      return order || null;
+    } catch (error) {
+      console.error('Failed to fetch pending order:', error);
+      return null;
+    }
+  };
+
+  const handlePay = async (booking: Booking) => {
+    setPayingBooking(booking);
+    await fetchBalance();
+    await checkPaymentPassword();
+    const order = await fetchPendingOrder(booking.id);
+    if (order) {
+      payForm.setFieldsValue({
+        payment_method: 'balance',
+        amount: order.actual_amount,
+      });
+    } else {
+      payForm.setFieldsValue({
+        payment_method: 'balance',
+        amount: (session?.price || 0) * booking.player_count,
+      });
+    }
+    setPayModalOpen(true);
+  };
+
+  const handlePaySubmit = async (values: any) => {
+    if (!payingBooking) return;
+    try {
+      let order = pendingOrder;
+      if (!order) {
+        const orderRes = await api.createOrder({
+          user_id: user!.id,
+          session_id: parseInt(id!),
+          booking_id: payingBooking.id,
+          total_amount: values.amount,
+          discount_amount: 0,
+          actual_amount: values.amount,
+          player_count: payingBooking.player_count,
+        });
+        order = orderRes.data;
+      }
+      if (values.payment_method === 'balance' && !isAdmin) {
+        await api.payWithBalance(order.id, {
+          payment_password: values.payment_password,
+          amount: values.amount,
+        });
+      } else {
+        await api.payOrder(order.id, values);
+      }
+      message.success('支付成功');
+      setPayModalOpen(false);
+      setPayingBooking(null);
+      setPendingOrder(null);
+      payForm.resetFields();
+      if (id) fetchSessionDetail(parseInt(id));
+    } catch (error) {
+      message.error('支付失败');
+    }
+  };
+
   const canBook = session?.status === 'pending' || session?.status === 'confirmed';
   const isFull = session?.current_players === session?.max_players;
+
+  const myBooking = session?.bookings?.find((b) => b.player_id === user?.id);
 
   if (!session) {
     return <div style={{ padding: 24 }}>加载中...</div>;
@@ -211,6 +310,62 @@ const SessionDetailPage: React.FC = () => {
         </Col>
 
         <Col xs={24} lg={8}>
+          {myBooking && (
+            <Card
+              className="card-shadow"
+              style={{ marginBottom: 16 }}
+              title={
+                <Space>
+                  <UserOutlined />
+                  我的报名
+                </Space>
+              }
+            >
+              <div style={{ marginBottom: 12 }}>
+                <Space>
+                  <Tag color={bookingStatusMap[myBooking.status]?.color}>
+                    {bookingStatusMap[myBooking.status]?.label}
+                  </Tag>
+                  <Text>人数: {myBooking.player_count} 人</Text>
+                </Space>
+              </div>
+              {myBooking.status === 'confirmed' && (
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Card size="small" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Row justify="space-between">
+                        <Text type="secondary">应付金额:</Text>
+                        <Text strong style={{ color: '#f5222d', fontSize: 16 }}>
+                          ¥{(session.price * myBooking.player_count).toFixed(2)}
+                        </Text>
+                      </Row>
+                      <Button
+                        type="primary"
+                        icon={<PayCircleOutlined />}
+                        onClick={() => handlePay(myBooking)}
+                        block
+                      >
+                        立即支付
+                      </Button>
+                    </Space>
+                  </Card>
+                </Space>
+              )}
+              {myBooking.status !== 'cancelled' && (
+                <div style={{ marginTop: 8 }}>
+                  <Popconfirm
+                    title="确定取消报名吗？"
+                    onConfirm={() => handleCancelBooking(myBooking.id)}
+                  >
+                    <Button type="link" danger icon={<CloseOutlined />} style={{ padding: 0 }}>
+                      取消报名
+                    </Button>
+                  </Popconfirm>
+                </div>
+              )}
+            </Card>
+          )}
+
           <Card className="card-shadow" style={{ marginBottom: 16 }}>
             <Row gutter={16}>
               <Col span={12}>
@@ -229,24 +384,26 @@ const SessionDetailPage: React.FC = () => {
                 />
               </Col>
             </Row>
-            <div style={{ marginTop: 16 }}>
-              {canBook ? (
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<PlusOutlined />}
-                  onClick={() => setBookingModalOpen(true)}
-                  disabled={isFull}
-                  block
-                >
-                  {isFull ? '已满员' : '立即报名'}
-                </Button>
-              ) : (
-                <Button type="primary" size="large" disabled block>
-                  {session.status === 'cancelled' ? '场次已取消' : '报名已结束'}
-                </Button>
-              )}
-            </div>
+            {!myBooking && (
+              <div style={{ marginTop: 16 }}>
+                {canBook ? (
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<PlusOutlined />}
+                    onClick={() => setBookingModalOpen(true)}
+                    disabled={isFull}
+                    block
+                  >
+                    {isFull ? '已满员' : '立即报名'}
+                  </Button>
+                ) : (
+                  <Button type="primary" size="large" disabled block>
+                    {session.status === 'cancelled' ? '场次已取消' : '报名已结束'}
+                  </Button>
+                )}
+              </div>
+            )}
           </Card>
 
           <Card
@@ -382,6 +539,137 @@ const SessionDetailPage: React.FC = () => {
               </Button>
               <Button type="primary" htmlType="submit">
                 提交报名
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="订单支付"
+        open={payModalOpen}
+        onCancel={() => {
+          setPayModalOpen(false);
+          setPayingBooking(null);
+          setPendingOrder(null);
+          payForm.resetFields();
+        }}
+        footer={null}
+      >
+        {payingBooking && (
+          <div style={{ marginBottom: 24 }}>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Text type="secondary">参与人数:</Text>
+                <div><Text strong>{payingBooking.player_count} 人</Text></div>
+              </Col>
+              <Col span={12}>
+                <Text type="secondary">应付金额:</Text>
+                <div>
+                  <Text strong style={{ color: '#f5222d', fontSize: 18 }}>
+                    ¥{((session?.price || 0) * payingBooking.player_count).toFixed(2)}
+                  </Text>
+                </div>
+              </Col>
+            </Row>
+            {!isAdmin && (
+              <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col span={24}>
+                  <Card size="small" style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
+                    <Space>
+                      <WalletOutlined style={{ color: '#52c41a' }} />
+                      <Text type="secondary">账户余额:</Text>
+                      <Text strong style={{ color: '#52c41a' }}>¥{balance.toFixed(2)}</Text>
+                      {balance < (session?.price || 0) * payingBooking.player_count && (
+                        <Tag color="red">余额不足</Tag>
+                      )}
+                      {!hasPaymentPassword && (
+                        <Tag color="orange">请先设置支付密码</Tag>
+                      )}
+                    </Space>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+          </div>
+        )}
+        <Form
+          form={payForm}
+          layout="vertical"
+          onFinish={handlePaySubmit}
+        >
+          <Form.Item
+            name="payment_method"
+            label="支付方式"
+            rules={[{ required: true, message: '请选择支付方式' }]}
+          >
+            <Select placeholder="请选择支付方式">
+              {!isAdmin && (
+                <Option
+                  value="balance"
+                  disabled={!hasPaymentPassword || balance < ((session?.price || 0) * (payingBooking?.player_count || 1))}
+                >
+                  余额支付 {!hasPaymentPassword ? '(未设置支付密码)' : balance < ((session?.price || 0) * (payingBooking?.player_count || 1)) ? '(余额不足)' : ''}
+                </Option>
+              )}
+              <Option value="wechat">微信支付</Option>
+              <Option value="alipay">支付宝</Option>
+              <Option value="cash">现金</Option>
+              <Option value="card">银行卡</Option>
+              <Option value="other">其他</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="amount"
+            label="支付金额"
+            rules={[{ required: true, message: '请输入支付金额' }]}
+          >
+            <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="支付金额" prefix="¥" />
+          </Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, curValues) => prevValues.payment_method !== curValues.payment_method}
+          >
+            {({ getFieldValue }) => {
+              const paymentMethod = getFieldValue('payment_method');
+              if (paymentMethod === 'balance' && !isAdmin) {
+                return (
+                  <Form.Item
+                    name="payment_password"
+                    label="支付密码"
+                    rules={[
+                      { required: true, message: '请输入支付密码' },
+                      { len: 6, message: '请输入6位数字密码' },
+                      { pattern: /^\d{6}$/, message: '支付密码必须是6位数字' },
+                    ]}
+                  >
+                    <Input.Password
+                      placeholder="请输入6位数字支付密码"
+                      maxLength={6}
+                      type="password"
+                      inputMode="numeric"
+                      style={{ letterSpacing: 8 }}
+                    />
+                  </Form.Item>
+                );
+              }
+              return null;
+            }}
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setPayModalOpen(false);
+                  setPayingBooking(null);
+                  setPendingOrder(null);
+                  payForm.resetFields();
+                }}
+              >
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit" icon={<PayCircleOutlined />}>
+                确认支付
               </Button>
             </Space>
           </Form.Item>

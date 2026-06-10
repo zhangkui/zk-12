@@ -187,6 +187,9 @@ def cancel_booking(db: Session, booking_id: int, player_id: Optional[int] = None
 
 
 def confirm_booking(db: Session, booking_id: int) -> Booking:
+    from ..models.order import Order, OrderStatus
+    from ..services.order_service import generate_order_no, get_order_by_no
+
     db_booking = get_booking(db, booking_id)
     if not db_booking:
         raise HTTPException(
@@ -208,6 +211,33 @@ def confirm_booking(db: Session, booking_id: int) -> Booking:
     db_booking.status = "confirmed"
     db_booking.updated_at = datetime.utcnow()
     db.add(db_booking)
+    db.flush()
+
+    existing_order = db.query(Order).filter(
+        Order.booking_id == db_booking.id,
+        Order.status.in_([OrderStatus.PENDING, OrderStatus.PAID]),
+    ).first()
+
+    if not existing_order and session_obj:
+        from decimal import Decimal
+        total_amount = Decimal(session_obj.price) * db_booking.player_count
+        order_no = generate_order_no()
+        while get_order_by_no(db, order_no):
+            order_no = generate_order_no()
+
+        db_order = Order(
+            order_no=order_no,
+            user_id=db_booking.player_id,
+            session_id=db_booking.session_id,
+            booking_id=db_booking.id,
+            total_amount=total_amount,
+            discount_amount=Decimal("0"),
+            actual_amount=total_amount,
+            status=OrderStatus.PENDING,
+            player_count=db_booking.player_count,
+        )
+        db.add(db_order)
+
     db.commit()
     db.refresh(db_booking)
     recalculate_session_players(db, db_booking.session_id)

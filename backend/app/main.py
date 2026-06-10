@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .core.config import settings
 from .core.database import Base, engine
-from .api import auth, users, rooms, scripts, hosts, host_schedules, sessions, bookings, orders
+from .api import auth, users, rooms, scripts, hosts, host_schedules, sessions, bookings, orders, wallet
 
 
 def create_tables():
@@ -41,6 +41,7 @@ app.include_router(host_schedules.router, prefix=api_prefix)
 app.include_router(sessions.router, prefix=api_prefix)
 app.include_router(bookings.router, prefix=api_prefix)
 app.include_router(orders.router, prefix=api_prefix)
+app.include_router(wallet.router, prefix=api_prefix)
 
 
 @app.get("/")

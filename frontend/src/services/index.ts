@@ -6,3 +6,4 @@ export * from './order';
 export * from './room';
 export * from './host';
 export * from './user';
+export * from './wallet';

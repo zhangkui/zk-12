@@ -45,6 +45,7 @@ const paymentMethodMap: Record<string, string> = {
   alipay: '支付宝',
   cash: '现金',
   card: '银行卡',
+  balance: '余额支付',
   other: '其他',
 };
 
@@ -63,6 +64,8 @@ const OrderList: React.FC = () => {
   const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [form] = Form.useForm();
+  const [balance, setBalance] = useState<number>(0);
+  const [hasPaymentPassword, setHasPaymentPassword] = useState(false);
   const [filters, setFilters] = useState({
     keyword: '',
     status: undefined as string | undefined,
@@ -118,19 +121,48 @@ const OrderList: React.FC = () => {
     }
   };
 
-  const handlePay = (order: Order) => {
+  const fetchBalance = async () => {
+    try {
+      const res = await api.getBalance();
+      setBalance(res.data.balance);
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+    }
+  };
+
+  const checkPaymentPassword = async () => {
+    try {
+      const res = await api.hasPaymentPassword();
+      setHasPaymentPassword(res.data);
+    } catch (error) {
+      console.error('Failed to check payment password:', error);
+    }
+  };
+
+  const handlePay = async (order: Order) => {
     setPayingOrder(order);
     form.setFieldsValue({
       payment_method: 'wechat',
       amount: order.actual_amount,
     });
+    if (!isAdmin) {
+      await fetchBalance();
+      await checkPaymentPassword();
+    }
     setPayModalOpen(true);
   };
 
   const handlePaySubmit = async (values: any) => {
     if (!payingOrder) return;
     try {
-      await api.payOrder(payingOrder.id, values);
+      if (values.payment_method === 'balance' && !isAdmin) {
+        await api.payWithBalance(payingOrder.id, {
+          payment_password: values.payment_password,
+          amount: values.amount,
+        });
+      } else {
+        await api.payOrder(payingOrder.id, values);
+      }
       message.success('支付成功');
       setPayModalOpen(false);
       setPayingOrder(null);
@@ -355,6 +387,24 @@ const OrderList: React.FC = () => {
                 </div>
               </Col>
             </Row>
+            {!isAdmin && (
+              <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col span={24}>
+                  <Card size="small" style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
+                    <Space>
+                      <Text type="secondary">账户余额:</Text>
+                      <Text strong style={{ color: '#52c41a' }}>¥{balance.toFixed(2)}</Text>
+                      {balance < payingOrder.actual_amount && (
+                        <Tag color="red">余额不足</Tag>
+                      )}
+                      {!hasPaymentPassword && (
+                        <Tag color="orange">请先设置支付密码</Tag>
+                      )}
+                    </Space>
+                  </Card>
+                </Col>
+              </Row>
+            )}
           </div>
         )}
         <Form
@@ -368,6 +418,11 @@ const OrderList: React.FC = () => {
             rules={[{ required: true, message: '请选择支付方式' }]}
           >
             <Select placeholder="请选择支付方式">
+              {!isAdmin && (
+                <Option value="balance" disabled={!hasPaymentPassword || balance < (payingOrder?.actual_amount || 0)}>
+                  余额支付 {!hasPaymentPassword ? '(未设置支付密码)' : balance < (payingOrder?.actual_amount || 0) ? '(余额不足)' : ''}
+                </Option>
+              )}
               <Option value="wechat">微信支付</Option>
               <Option value="alipay">支付宝</Option>
               <Option value="cash">现金</Option>
@@ -381,6 +436,36 @@ const OrderList: React.FC = () => {
             rules={[{ required: true, message: '请输入支付金额' }]}
           >
             <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="支付金额" />
+          </Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, curValues) => prevValues.payment_method !== curValues.payment_method}
+          >
+            {({ getFieldValue }) => {
+              const paymentMethod = getFieldValue('payment_method');
+              if (paymentMethod === 'balance' && !isAdmin) {
+                return (
+                  <Form.Item
+                    name="payment_password"
+                    label="支付密码"
+                    rules={[
+                      { required: true, message: '请输入支付密码' },
+                      { len: 6, message: '请输入6位数字密码' },
+                      { pattern: /^\d{6}$/, message: '支付密码必须是6位数字' },
+                    ]}
+                  >
+                    <Input.Password
+                      placeholder="请输入6位数字支付密码"
+                      maxLength={6}
+                      type="password"
+                      inputMode="numeric"
+                      style={{ letterSpacing: 8 }}
+                    />
+                  </Form.Item>
+                );
+              }
+              return null;
+            }}
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>

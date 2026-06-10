@@ -16,6 +16,8 @@ import RoomList from '../pages/RoomList';
 import UserList from '../pages/UserList';
 import Register from '../pages/Register';
 import Profile from '../pages/Profile';
+import Wallet from '../pages/Wallet';
+import RechargeManage from '../pages/RechargeManage';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -97,6 +99,15 @@ const AppRouter: React.FC = () => {
           }
         />
         <Route path="profile" element={<Profile />} />
+        <Route path="wallet" element={<Wallet />} />
+        <Route
+          path="recharge-manage"
+          element={
+            <PrivateRoute roles={['admin', 'owner']}>
+              <RechargeManage />
+            </PrivateRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

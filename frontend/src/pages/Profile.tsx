@@ -12,17 +12,23 @@ import {
   Row,
   Col,
   Tag,
+  Statistic,
+  Typography,
 } from 'antd';
+
+const { Text } = Typography;
 import {
   UserOutlined,
   EditOutlined,
   LockOutlined,
   SaveOutlined,
   CloseOutlined,
+  WalletOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/useAuthStore';
 import * as api from '../services';
-import { User } from '../types';
+import { User, UserBalance } from '../types';
 
 const roleMap: Record<string, { label: string; color: string }> = {
   admin: { label: '管理员', color: 'red' },
@@ -35,10 +41,16 @@ const Profile: React.FC = () => {
   const { user, setUser } = useAuthStore();
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
+  const [paymentPasswordForm] = Form.useForm();
   const [editing, setEditing] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [paymentPasswordModalOpen, setPaymentPasswordModalOpen] = useState(false);
+  const [paymentPasswordMode, setPaymentPasswordMode] = useState<'set' | 'update'>('set');
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [paymentPasswordLoading, setPaymentPasswordLoading] = useState(false);
+  const [balance, setBalance] = useState<UserBalance | null>(null);
+  const [hasPaymentPassword, setHasPaymentPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -48,8 +60,59 @@ const Profile: React.FC = () => {
         phone: user.phone,
         full_name: user.full_name,
       });
+      fetchBalance();
+      checkPaymentPassword();
     }
   }, [user, form]);
+
+  const fetchBalance = async () => {
+    try {
+      const res = await api.getBalance();
+      setBalance(res.data);
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+    }
+  };
+
+  const checkPaymentPassword = async () => {
+    try {
+      const res = await api.hasPaymentPassword();
+      setHasPaymentPassword(res.data);
+    } catch (error) {
+      console.error('Failed to check payment password:', error);
+    }
+  };
+
+  const openPaymentPasswordModal = (mode: 'set' | 'update') => {
+    setPaymentPasswordMode(mode);
+    paymentPasswordForm.resetFields();
+    setPaymentPasswordModalOpen(true);
+  };
+
+  const handlePaymentPasswordSubmit = async (values: any) => {
+    setPaymentPasswordLoading(true);
+    try {
+      if (paymentPasswordMode === 'set') {
+        await api.setPaymentPassword({
+          payment_password: values.payment_password,
+        });
+        message.success('支付密码设置成功');
+        setHasPaymentPassword(true);
+      } else {
+        await api.updatePaymentPassword({
+          old_payment_password: values.old_payment_password,
+          new_payment_password: values.new_payment_password,
+        });
+        message.success('支付密码修改成功');
+      }
+      setPaymentPasswordModalOpen(false);
+      paymentPasswordForm.resetFields();
+    } catch (error) {
+      message.error(paymentPasswordMode === 'set' ? '设置失败' : '修改失败');
+    } finally {
+      setPaymentPasswordLoading(false);
+    }
+  };
 
   const handleSubmit = async (values: any) => {
     if (!user) return;
@@ -164,6 +227,63 @@ const Profile: React.FC = () => {
         </Descriptions>
       </Card>
 
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={8}>
+          <Card className="card-shadow">
+            <Statistic
+              title="账户余额"
+              value={balance?.balance || 0}
+              precision={2}
+              prefix="¥"
+              valueStyle={{ color: '#1890ff' }}
+            />
+            <div style={{ marginTop: 12 }}>
+              <Button
+                type="link"
+                icon={<WalletOutlined />}
+                onClick={() => window.location.href = '/wallet'}
+                style={{ padding: 0 }}
+              >
+                查看钱包详情
+              </Button>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="card-shadow">
+            <Statistic
+              title="累计充值"
+              value={balance?.total_recharge || 0}
+              precision={2}
+              prefix="¥"
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="card-shadow">
+            <div style={{ marginBottom: 8 }}>
+              <Text type="secondary">支付密码</Text>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              {hasPaymentPassword ? (
+                <Tag color="green">已设置</Tag>
+              ) : (
+                <Tag color="orange">未设置</Tag>
+              )}
+            </div>
+            <Button
+              type="primary"
+              size="small"
+              icon={<KeyOutlined />}
+              onClick={() => openPaymentPasswordModal(hasPaymentPassword ? 'update' : 'set')}
+            >
+              {hasPaymentPassword ? '修改支付密码' : '设置支付密码'}
+            </Button>
+          </Card>
+        </Col>
+      </Row>
+
       {editing && (
         <Card className="card-shadow" title="编辑资料">
           <Form
@@ -271,6 +391,118 @@ const Profile: React.FC = () => {
               </Button>
               <Button type="primary" htmlType="submit" loading={passwordLoading}>
                 确认修改
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={paymentPasswordMode === 'set' ? '设置支付密码' : '修改支付密码'}
+        open={paymentPasswordModalOpen}
+        onCancel={() => {
+          setPaymentPasswordModalOpen(false);
+          paymentPasswordForm.resetFields();
+        }}
+        footer={null}
+        width={500}
+      >
+        <Form
+          form={paymentPasswordForm}
+          layout="vertical"
+          onFinish={handlePaymentPasswordSubmit}
+        >
+          {paymentPasswordMode === 'update' && (
+            <Form.Item
+              name="old_payment_password"
+              label="原支付密码"
+              rules={[
+                { required: true, message: '请输入原支付密码' },
+                { len: 6, message: '请输入6位数字密码' },
+              ]}
+            >
+              <Input.Password
+                placeholder="请输入6位数字原支付密码"
+                maxLength={6}
+                type="password"
+                inputMode="numeric"
+                style={{ letterSpacing: 8 }}
+              />
+            </Form.Item>
+          )}
+          <Form.Item
+            name="payment_password"
+            label={paymentPasswordMode === 'set' ? '支付密码' : '新支付密码'}
+            rules={[
+              { required: true, message: '请输入支付密码' },
+              { len: 6, message: '请输入6位数字密码' },
+              { pattern: /^\d{6}$/, message: '支付密码必须是6位数字' },
+            ]}
+          >
+            <Input.Password
+              placeholder="请输入6位数字支付密码"
+              maxLength={6}
+              type="password"
+              inputMode="numeric"
+              style={{ letterSpacing: 8 }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="confirm_password"
+            label="确认支付密码"
+            dependencies={[paymentPasswordMode === 'set' ? 'payment_password' : 'new_payment_password']}
+            rules={[
+              { required: true, message: '请确认支付密码' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  const pwdField = paymentPasswordMode === 'set' ? 'payment_password' : 'new_payment_password';
+                  if (!value || getFieldValue(pwdField) === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('两次输入的密码不一致'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              placeholder="请再次输入6位数字支付密码"
+              maxLength={6}
+              type="password"
+              inputMode="numeric"
+              style={{ letterSpacing: 8 }}
+            />
+          </Form.Item>
+          {paymentPasswordMode === 'update' && (
+            <Form.Item
+              name="new_payment_password"
+              label="新支付密码"
+              rules={[
+                { required: true, message: '请输入新支付密码' },
+                { len: 6, message: '请输入6位数字密码' },
+                { pattern: /^\d{6}$/, message: '支付密码必须是6位数字' },
+              ]}
+            >
+              <Input.Password
+                placeholder="请输入6位数字新支付密码"
+                maxLength={6}
+                type="password"
+                inputMode="numeric"
+                style={{ letterSpacing: 8 }}
+              />
+            </Form.Item>
+          )}
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setPaymentPasswordModalOpen(false);
+                  paymentPasswordForm.resetFields();
+                }}
+              >
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit" loading={paymentPasswordLoading}>
+                确认{paymentPasswordMode === 'set' ? '设置' : '修改'}
               </Button>
             </Space>
           </Form.Item>

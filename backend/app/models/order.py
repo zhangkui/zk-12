@@ -17,6 +17,7 @@ class PaymentMethod(str, enum.Enum):
     ALIPAY = "alipay"
     CASH = "cash"
     CARD = "card"
+    BALANCE = "balance"
     OTHER = "other"
 
 

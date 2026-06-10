@@ -13,6 +13,8 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  WalletOutlined,
+  PlusCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -52,6 +54,11 @@ const MainLayout: React.FC = () => {
         icon: <ShoppingCartOutlined />,
         label: '订单管理',
       },
+      {
+        key: '/wallet',
+        icon: <WalletOutlined />,
+        label: '我的钱包',
+      },
     ];
 
     if (user?.role === 'admin' || user?.role === 'owner') {
@@ -75,6 +82,11 @@ const MainLayout: React.FC = () => {
           key: '/users',
           icon: <SettingOutlined />,
           label: '用户管理',
+        },
+        {
+          key: '/recharge-manage',
+          icon: <PlusCircleOutlined />,
+          label: '充值管理',
         }
       );
     }
@@ -89,6 +101,14 @@ const MainLayout: React.FC = () => {
       label: '个人中心',
       onClick: () => {
         navigate('/profile');
+      },
+    },
+    {
+      key: 'wallet',
+      icon: <WalletOutlined />,
+      label: '我的钱包',
+      onClick: () => {
+        navigate('/wallet');
       },
     },
     {
