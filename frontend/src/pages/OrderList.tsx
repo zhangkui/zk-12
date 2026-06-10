@@ -16,12 +16,12 @@ import {
   InputNumber,
   message,
   DatePicker,
+  Statistic,
 } from 'antd';
 import {
   SearchOutlined,
   PayCircleOutlined,
   CloseOutlined,
-  PlusOutlined,
   BarChartOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';

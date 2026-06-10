@@ -9,10 +9,30 @@ from app.models.user import User, UserRole
 from app.models.room import Room
 from app.models.script import Script, ScriptDifficulty, ScriptType
 from app.models.host import Host
+from app.models.host_schedule import HostSchedule
+from app.models.session import Session as DBSession
+from app.models.booking import Booking
+from app.models.order import Order, OrderStatus, PaymentMethod
 from decimal import Decimal
+import time
 
 
 def init_database():
+    print("Waiting for database connection...")
+    max_retries = 10
+    for i in range(max_retries):
+        try:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print("Database connection established!")
+            break
+        except Exception as e:
+            if i == max_retries - 1:
+                raise
+            print(f"Waiting for database... ({i+1}/{max_retries})")
+            time.sleep(2)
+
     print("Creating tables...")
     Base.metadata.create_all(bind=engine)
     print("Tables created successfully!")

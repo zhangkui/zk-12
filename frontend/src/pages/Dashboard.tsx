@@ -5,7 +5,6 @@ import {
   TeamOutlined,
   ShoppingCartOutlined,
   DollarOutlined,
-  BookOutlined,
   RightOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';

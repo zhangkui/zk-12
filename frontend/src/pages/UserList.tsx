@@ -28,7 +28,7 @@ import type { ColumnsType } from 'antd/es/table';
 import * as api from '../services';
 import { User } from '../types';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 
 const roleMap: Record<string, { label: string; color: string }> = {

@@ -29,7 +29,7 @@ import dayjs from 'dayjs';
 import * as api from '../services';
 import { HostSchedule, Host, Session } from '../types';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 
 const scheduleStatusMap: Record<string, { label: string; color: string }> = {

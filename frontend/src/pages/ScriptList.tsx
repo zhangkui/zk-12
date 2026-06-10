@@ -19,7 +19,7 @@ import {
 import { SearchOutlined, PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../services';
-import { Script, ScriptDifficulty, ScriptType } from '../types';
+import { Script } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
 
 const { Title, Text } = Typography;
@@ -47,7 +47,6 @@ const ScriptList: React.FC = () => {
   const isAdmin = user?.role === 'admin' || user?.role === 'owner';
 
   const [scripts, setScripts] = useState<Script[]>([]);
-  const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(12);
   const [total, setTotal] = useState(0);
@@ -63,7 +62,6 @@ const ScriptList: React.FC = () => {
   }, [page, keyword, difficulty, scriptType]);
 
   const fetchScripts = async () => {
-    setLoading(true);
     try {
       const res = await api.getScripts({
         page,
@@ -77,8 +75,6 @@ const ScriptList: React.FC = () => {
       setTotal(res.total);
     } catch (error) {
       console.error('Failed to fetch scripts:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -238,11 +234,7 @@ const ScriptList: React.FC = () => {
                       />,
                       <Popconfirm
                         title="确定删除这个剧本吗？"
-                        onConfirm={(e) => {
-                          e?.stopPropagation();
-                          handleDelete(script.id);
-                        }}
-                        onClick={(e) => e?.stopPropagation()}
+                        onConfirm={() => handleDelete(script.id)}
                       >
                         <DeleteOutlined key="delete" />
                       </Popconfirm>,
@@ -271,7 +263,7 @@ const ScriptList: React.FC = () => {
                         <Tag color="gold">{script.duration_minutes}分钟</Tag>
                       </Space>
                     </div>
-                    <Text type="secondary" ellipsis={{ rows: 2 }}>
+                    <Text type="secondary" ellipsis>
                       {script.description || '暂无描述'}
                     </Text>
                     {script.tags && (

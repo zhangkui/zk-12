@@ -31,7 +31,7 @@ import {
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../services';
-import { SessionDetail, Booking, User } from '../types';
+import { SessionDetail, Booking } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
 
 const { Title, Text } = Typography;

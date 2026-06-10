@@ -4,7 +4,6 @@ import { ArrowLeftOutlined, CalendarOutlined, TeamOutlined, ClockCircleOutlined 
 import { useNavigate, useParams } from 'react-router-dom';
 import * as api from '../services';
 import { Script, Session } from '../types';
-import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
