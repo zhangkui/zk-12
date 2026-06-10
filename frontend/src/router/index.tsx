@@ -24,6 +24,11 @@ interface PrivateRouteProps {
   roles?: string[];
 }
 
+const getHomeRoute = (role: string) => {
+  if (role === 'player') return '/profile';
+  return '/dashboard';
+};
+
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, roles }) => {
   const { isAuthenticated, user } = useAuthStore();
 
@@ -32,10 +37,15 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, roles }) => {
   }
 
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getHomeRoute(user.role)} replace />;
   }
 
   return <>{children}</>;
+};
+
+const IndexRedirect: React.FC = () => {
+  const { user } = useAuthStore();
+  return <Navigate to={getHomeRoute(user?.role || 'player')} replace />;
 };
 
 const AppRouter: React.FC = () => {
@@ -59,7 +69,8 @@ const AppRouter: React.FC = () => {
           </PrivateRoute>
         }
       >
-        <Route index element={<Dashboard />} />
+        <Route index element={<IndexRedirect />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="scripts" element={<ScriptList />} />
         <Route path="scripts/:id" element={<ScriptDetail />} />
         <Route path="sessions" element={<SessionList />} />

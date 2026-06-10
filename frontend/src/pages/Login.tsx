@@ -14,9 +14,17 @@ const Login: React.FC = () => {
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
-      await login(values.username, values.password);
+      const response = await (async () => {
+        await login(values.username, values.password);
+        const savedUser = localStorage.getItem('user');
+        return savedUser ? JSON.parse(savedUser) : null;
+      })();
       message.success('登录成功');
-      navigate('/');
+      if (response && response.role === 'player') {
+        navigate('/profile');
+      } else {
+        navigate('/');
+      }
     } catch (error) {
       message.error('登录失败，请检查用户名和密码');
     } finally {

@@ -1,4 +1,4 @@
-from .base import Base
+from ..core.database import Base
 from .user import User, UserRole
 from .room import Room
 from .script import Script

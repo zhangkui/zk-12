@@ -431,7 +431,7 @@ const Profile: React.FC = () => {
             </Form.Item>
           )}
           <Form.Item
-            name="payment_password"
+            name={paymentPasswordMode === 'set' ? 'payment_password' : 'new_payment_password'}
             label={paymentPasswordMode === 'set' ? '支付密码' : '新支付密码'}
             rules={[
               { required: true, message: '请输入支付密码' },
@@ -472,25 +472,6 @@ const Profile: React.FC = () => {
               style={{ letterSpacing: 8 }}
             />
           </Form.Item>
-          {paymentPasswordMode === 'update' && (
-            <Form.Item
-              name="new_payment_password"
-              label="新支付密码"
-              rules={[
-                { required: true, message: '请输入新支付密码' },
-                { len: 6, message: '请输入6位数字密码' },
-                { pattern: /^\d{6}$/, message: '支付密码必须是6位数字' },
-              ]}
-            >
-              <Input.Password
-                placeholder="请输入6位数字新支付密码"
-                maxLength={6}
-                type="password"
-                inputMode="numeric"
-                style={{ letterSpacing: 8 }}
-              />
-            </Form.Item>
-          )}
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
               <Button

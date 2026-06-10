@@ -22,6 +22,7 @@ export const createOrder = (data: Partial<Order>): Promise<APIResponse<Order>> =
 export const payOrder = (id: number, data: {
   payment_method: string;
   amount: number;
+  transaction_no?: string;
 }): Promise<APIResponse<Order>> => {
   return api.post(`/orders/${id}/pay`, data);
 };
